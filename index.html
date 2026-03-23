@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <base target="_top">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #007bff;
+            /* Changed to a standard reliable blue or VNPT blue if known, sticking to safe blue */
+            --primary-hover: #0056b3;
+            --bg-color: #f4f7f6;
+            --card-bg: #ffffff;
+            --text-color: #333333;
+            --border-radius: 8px;
+            --box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: var(--bg-color);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            color: var(--text-color);
+        }
+
+        .container {
+            background-color: var(--card-bg);
+            padding: 30px;
+            border-radius: var(--border-radius);
+            box-shadow: var(--box-shadow);
+            width: 100%;
+            max-width: 500px;
+        }
+
+        h2 {
+            text-align: center;
+            margin-bottom: 20px;
+            color: var(--primary-color);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #555;
+        }
+
+        select,
+        input[type="text"],
+        input[type="number"],
+        textarea {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            box-sizing: border-box;
+            /* Ensures padding doesn't affect width */
+            font-size: 16px;
+            transition: border-color 0.3s ease;
+        }
+
+        select:focus,
+        input:focus {
+            border-color: var(--primary-color);
+            outline: none;
+        }
+
+        button {
+            width: 100%;
+            padding: 14px;
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        button:hover {
+            background-color: var(--primary-hover);
+        }
+
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+
+        /* Loading Overlay */
+        .loading {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.8);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid var(--primary-color);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin-bottom: 10px;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        .notification {
+            display: none;
+            padding: 15px;
+            margin-top: 20px;
+            border-radius: 6px;
+            text-align: center;
+            font-weight: 500;
+        }
+
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+            border: 1px solid #f5c6cb;
+        }
+
+        /* Branding */
+        .branding {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 20px;
+            gap: 15px;
+        }
+
+        .branding img {
+            height: 60px;
+            width: auto;
+        }
+
+        .branding h2 {
+            margin: 0;
+            text-align: left;
+            font-size: 24px;
+            text-transform: uppercase;
+            color: var(--primary-color);
+        }
+
+        /* Tabs */
+        .tabs {
+            display: flex;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #eee;
+        }
+
+        .tab-btn {
+            padding: 10px 20px;
+            background: none;
+            border: none;
+            border-bottom: 3px solid transparent;
+            font-size: 16px;
+            font-weight: 500;
+            color: #555;
+            cursor: pointer;
+            width: auto;
+            margin-right: 10px;
+        }
+
+        .tab-btn:hover {
+            color: var(--primary-color);
+        }
+
+        .tab-btn.active {
+            color: var(--primary-color);
+            border-bottom-color: var(--primary-color);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* Report Table */
+        .report-filters {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 20px;
+            align-items: flex-end;
+        }
+
+        .report-filters .form-group {
+            margin-bottom: 0;
+            width: 100%;
+        }
+
+        .report-filters .full-width {
+            grid-column: 1 / -1;
+        }
+
+        .report-filters .form-group {
+            margin-bottom: 0;
+            width: 100%;
+        }
+
+        .report-table-wrapper {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+            font-size: 14px;
+        }
+
+        th,
+        td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #f8f9fa;
+            font-weight: bold;
+            white-space: nowrap;
+        }
+    </style>
+
+</head>
+
+<body>
+    <div class="container">
+        <!-- Header with Branding -->
+        <div class="branding"><img src="https://vnptgroup.vn/wp-content/uploads/2021/09/Logo-VNPT.png" alt="VNPT Logo">
+            <h2>Nhập báo cáo thi đua bán hàng thực chiến</h2>
+        </div>
+        <!-- Navigation Tabs -->
+        <div class="tabs"><button class="tab-btn active" onclick="switchTab('inputTab')">Nhập báo
+                cáo</button><button class="tab-btn" onclick="switchTab('reportTab')">Xem báo cáo</button></div>
+        <!-- Tab 1: Input Form -->
+        <div id="inputTab" class="tab-content active">
+            <form id="dataForm" onsubmit="submitForm(event)">
+                <!-- Đơn vị -->
+                <div class="form-group"><label for="unitName">Tên đơn vị</label><select id="unitName" name="unitName"
+                        required>
+                        <option value="" disabled selected>Đang tải danh sách...</option>
+                    </select></div>
+                <!-- Mã nhân viên -->
+                <div class="form-group">
+                    <label for="empCode">Mã nhân viên</label>
+                    <select id="empCode" name="empCode" required>
+                        <option value="" disabled selected>Đang tải danh sách...</option>
+                    </select>
+                    <input type="hidden" id="empName" name="empName" value="">
+                </div>
+                <!-- Dịch vụ -->
+                <div class="form-group"><label for="serviceType">Dịch vụ</label><select id="serviceType"
+                        name="serviceType" required>
+                        <option value="" disabled selected>-- Chọn Dịch vụ --</option>
+                        <option value="DDTT">DDTT</option>
+                        <option value="DDTS">DDTS</option>
+                        <option value="Fiber Khôi phục">Fiber Khôi phục</option>
+                    </select></div>
+                <!-- Số thuê bao -->
+                <div class="form-group"><label for="phoneNumber">Số thuê bao</label><input type="text" id="phoneNumber"
+                        name="phoneNumber" placeholder="Nhập số thuê bao..." required></div>
+                <!-- Giá cước -->
+                <div class="form-group"><label for="price">Giá cước</label><input type="number" id="price" name="price"
+                        placeholder="Nhập giá cước (tối đa 2,500,000)..." required min="50000" max="2500000"></div>
+                <!-- Ghi chú -->
+                <div class="form-group"><label for="note">Ghi chú (Không bắt
+                        buộc)</label><textarea id="note" name="note" placeholder="Nhập ghi chú..." rows="3"></textarea>
+                </div>
+                <button type="submit" id="submitBtn">Gửi Báo Cáo</button>
+            </form>
+            <div id="notification" class="notification"></div>
+        </div>
+        <!-- Tab 2: Report View -->
+        <div id="reportTab" class="tab-content">
+            <div class="report-filters">
+                <div class="form-group"><label for="reportStartDate">Từ ngày</label><input type="date" id="reportStartDate"></div>
+                <div class="form-group"><label for="reportEndDate">Đến ngày</label><input type="date" id="reportEndDate"></div>
+                <div class="form-group"><label for="reportUnit">Đơn vị</label><select id="reportUnit">
+                        <option value="">-- Tất cả Đơn vị --</option>
+                    </select></div>
+                <div class="form-group"><label for="reportEmp">Nhân viên</label><select id="reportEmp">
+                        <option value="">-- Tất cả Nhân viên --</option>
+                    </select></div>
+                <div class="form-group full-width"><button type="button" onclick="fetchReport()"
+                        style="padding: 12px 20px; width: 100%;">Tra cứu</button></div>
+            </div>
+            <div id="reportResults" class="report-table-wrapper">
+                <p style="text-align: center; color: #666;">Chọn ngày và đơn vị rồi bấm Tra cứu</p>
+            </div>
+        </div>
+    </div>
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="loading">
+        <div class="spinner"></div>
+        <div id="loadingText">Đang xử lý...</div>
+    </div>
+    <script>var globalEmployees = []; // Store all employees for filtering
+
+        // Load configuration data when page loads
+        window.onload = function () {
+            document.getElementById('loadingOverlay').style.display = 'flex';
+            document.getElementById('loadingText').innerText = "Đang tải dữ liệu cấu hình...";
+
+            google.script.run.withSuccessHandler(populateDropdowns).withFailureHandler(handleError).getConfigData();
+
+            // Add event listener for Unit change
+            document.getElementById('unitName').addEventListener('change', filterEmployees);
+
+            // Add event listener to capture employee name
+            document.getElementById('empCode').addEventListener('change', function() {
+                var selectedCode = this.value;
+                var emp = globalEmployees.find(function(e) { return e.code === selectedCode; });
+                document.getElementById('empName').value = emp ? emp.name : '';
+            });
+
+            // Add event listener for Service change
+            document.getElementById('serviceType').addEventListener('change', updatePhoneValidation);
+
+            // Add event listener for Report Unit change
+            document.getElementById('reportUnit').addEventListener('change', filterReportEmployees);
+
+            // Set default date for report to today
+            document.getElementById('reportStartDate').valueAsDate = new Date();
+            document.getElementById('reportEndDate').valueAsDate = new Date();
+        }
+
+            ;
+
+        function populateDropdowns(data) {
+            var unitSelect = document.getElementById('unitName');
+            var reportUnitSelect = document.getElementById('reportUnit');
+            globalEmployees = data.employees || [];
+
+            // Clear options
+            unitSelect.innerHTML = '<option value="" disabled selected>-- Chọn Đơn vị --</option>';
+            reportUnitSelect.innerHTML = '<option value="">-- Tất cả Đơn vị --</option>';
+
+            // Populate Units
+            if (data.units && data.units.length > 0) {
+                data.units.forEach(function (unit) {
+                    // Form Select
+                    var option = document.createElement('option');
+                    option.value = unit;
+                    option.text = unit;
+                    unitSelect.appendChild(option);
+
+                    // Report Select
+                    var reportOption = document.createElement('option');
+                    reportOption.value = unit;
+                    reportOption.text = unit;
+                    reportUnitSelect.appendChild(reportOption);
+                });
+            }
+
+            else {
+                unitSelect.innerHTML = '<option value="" disabled selected>Không có dữ liệu Đơn vị</option>';
+            }
+
+            // Initial filter (will clear employee dropdown)
+            filterEmployees();
+
+            document.getElementById('loadingOverlay').style.display = 'none';
+        }
+
+        function filterEmployees() {
+            var unitSelect = document.getElementById('unitName');
+            var empSelect = document.getElementById('empCode');
+            var selectedUnit = unitSelect.value;
+
+            // Clear current employee options
+            empSelect.innerHTML = '<option value="" disabled selected>-- Chọn Mã Nhân viên --</option>';
+
+            if (!selectedUnit) return;
+
+            // Filter employees belonging to the selected unit
+            var filteredEmps = globalEmployees.filter(function (emp) {
+                return emp.unit === selectedUnit;
+            });
+
+            // Sort by employee code
+            filteredEmps.sort(function(a, b) {
+                return a.code.localeCompare(b.code);
+            });
+
+            if (filteredEmps.length > 0) {
+                filteredEmps.forEach(function (emp) {
+                    var option = document.createElement('option');
+                    option.value = emp.code;
+                    // Format: CODE - NAME
+                    option.text = emp.code + " - " + emp.name;
+                    empSelect.appendChild(option);
+                });
+            }
+
+            else {
+                empSelect.innerHTML = '<option value="" disabled selected>Không có nhân viên trong đơn vị này</option>';
+            }
+        }
+
+        function updatePhoneValidation() {
+            var serviceSelect = document.getElementById('serviceType');
+            var phoneInput = document.getElementById('phoneNumber');
+            var service = serviceSelect.value;
+
+            if (service === 'DDTT' || service === 'DDTS') {
+                phoneInput.pattern = '^[1-9][0-9]{8}$';
+                phoneInput.title = 'Số điện thoại phải gồm 9 chữ số và bắt đầu từ 1-9';
+                phoneInput.maxLength = 9;
+                phoneInput.placeholder = 'Nhập số thuê bao (VD: 912345678)...';
+            }
+
+            else {
+                // Fiber Khôi phục or others
+                phoneInput.removeAttribute('pattern');
+                phoneInput.removeAttribute('title');
+                phoneInput.maxLength = 50;
+                phoneInput.placeholder = 'Nhập số thuê bao (tối đa 50 ký tự)...';
+            }
+        }
+
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(function (el) {
+                el.classList.remove('active');
+            });
+
+            document.querySelectorAll('.tab-btn').forEach(function (el) {
+                el.classList.remove('active');
+            });
+
+            document.getElementById(tabId).classList.add('active');
+
+            // Find button that calls this tab and activate it
+            var index = (tabId === 'inputTab') ? 0 : 1;
+            document.querySelectorAll('.tab-btn')[index].classList.add('active');
+        }
+
+        function filterReportEmployees() {
+            var reportUnitSelect = document.getElementById('reportUnit');
+            var reportEmpSelect = document.getElementById('reportEmp');
+            var selectedUnit = reportUnitSelect.value;
+
+            // Clear current employee options
+            reportEmpSelect.innerHTML = '<option value="">-- Tất cả Nhân viên --</option>';
+
+            if (!selectedUnit) return;
+
+            // Filter employees belonging to the selected unit
+            var filteredEmps = globalEmployees.filter(function (emp) {
+                return emp.unit === selectedUnit;
+            });
+
+            // Sort by employee code
+            filteredEmps.sort(function(a, b) {
+                return a.code.localeCompare(b.code);
+            });
+
+            if (filteredEmps.length > 0) {
+                filteredEmps.forEach(function (emp) {
+                    var option = document.createElement('option');
+                    option.value = emp.code;
+                    // Format: CODE - NAME
+                    option.text = emp.code + " - " + emp.name;
+                    reportEmpSelect.appendChild(option);
+                });
+            }
+        }
+
+        function fetchReport() {
+            var startDate = document.getElementById('reportStartDate').value;
+            var endDate = document.getElementById('reportEndDate').value;
+            var unit = document.getElementById('reportUnit').value;
+            var empCode = document.getElementById('reportEmp').value;
+
+            document.getElementById('loadingOverlay').style.display = 'flex';
+            document.getElementById('loadingText').innerText = "Đang tra cứu...";
+
+            google.script.run.withSuccessHandler(renderReport).withFailureHandler(handleError).getReportData(startDate, endDate, unit, empCode);
+        }
+
+        function renderReport(data) {
+            document.getElementById('loadingOverlay').style.display = 'none';
+            var container = document.getElementById('reportResults');
+
+            if (!data || data.length === 0) {
+                container.innerHTML = '<p style="text-align: center; padding: 20px;">Không tìm thấy kết quả nào.</p>';
+                return;
+            }
+
+            // Calculate totals
+            var summary = {};
+            data.forEach(function(row) {
+                var serv = row.service || 'Khác';
+                if (!summary[serv]) summary[serv] = { count: 0, revenue: 0 };
+                summary[serv].count++;
+                summary[serv].revenue += Number(row.price) || 0;
+            });
+            
+            // Generate summary HTML
+            var sumHtml = '<div style="margin-bottom: 15px; padding: 15px; background-color: #e9ecef; border-radius: 6px;">';
+            sumHtml += '<h3 style="margin-top: 0; margin-bottom: 10px; font-size: 15px; color: var(--primary-color);">Tổng kết theo dịch vụ</h3>';
+            sumHtml += '<ul style="margin: 0; padding-left: 20px; font-size: 14px; font-weight: 500; line-height: 1.6; color: #333;">';
+            for (var s in summary) {
+                var formatRev = summary[s].revenue.toLocaleString('vi-VN') + ' VNĐ';
+                sumHtml += '<li><strong>' + s + '</strong>: ' + summary[s].count + ' thuê bao - ' + formatRev + '</li>';
+            }
+            sumHtml += '</ul></div>';
+
+            var html = sumHtml + '<table><thead><tr><th>Thời gian</th><th>Đơn vị</th><th>Mã NV</th><th>Tên NV</th><th>Số TB</th><th>Dịch vụ</th><th>Giá</th><th>Ghi chú</th></tr></thead><tbody>';
+
+            data.forEach(function (row) {
+                html += '<tr>';
+                html += '<td>' + row.time + '</td>';
+                html += '<td>' + row.unit + '</td>';
+                html += '<td>' + row.empCode + '</td>';
+                html += '<td>' + (row.empName || '') + '</td>';
+                html += '<td>' + row.phone + '</td>';
+                html += '<td>' + row.service + '</td>';
+                var p = Number(row.price);
+                var formattedPrice = isNaN(p) ? row.price : p.toLocaleString('vi-VN');
+                html += '<td>' + formattedPrice + '</td>';
+                html += '<td>' + row.note + '</td>';
+                html += '</tr>';
+            });
+            html += '</tbody></table>';
+            container.innerHTML = html;
+        }
+
+        function submitForm(e) {
+            e.preventDefault();
+
+            var submitBtn = document.getElementById('submitBtn');
+            var loadingOverlay = document.getElementById('loadingOverlay');
+            var loadingText = document.getElementById('loadingText');
+            var notification = document.getElementById('notification');
+
+            // UI Handling
+            submitBtn.disabled = true;
+            loadingOverlay.style.display = 'flex';
+            loadingText.innerText = "Đang gửi dữ liệu...";
+            notification.style.display = 'none';
+
+            google.script.run.withSuccessHandler(function (response) {
+                loadingOverlay.style.display = 'none';
+                submitBtn.disabled = false;
+
+                if (response.success) {
+                    // Show success message
+                    notification.className = 'notification success';
+                    notification.innerText = response.message;
+                    notification.style.display = 'block';
+
+                    // Reset form but keep the selected Unit if desired, 
+                    // or reset everything. Let's reset but re-trigger filter if unit is reset
+                    document.getElementById('dataForm').reset();
+                    document.getElementById('unitName').selectedIndex = 0;
+                    document.getElementById('empCode').innerHTML = '<option value="" disabled selected>-- Chọn Mã Nhân viên --</option>';
+                    document.getElementById('empName').value = '';
+
+                    // Hide notification after 5 seconds
+                    setTimeout(function () {
+                        notification.style.display = 'none';
+                    }
+
+                        , 5000);
+                }
+
+                else {
+                    handleError(new Error(response.message));
+                }
+
+            }).withFailureHandler(function (error) {
+                handleError(error);
+            }).processForm(document.getElementById('dataForm'));
+        }
+
+        function handleError(error) {
+            var loadingOverlay = document.getElementById('loadingOverlay');
+            var submitBtn = document.getElementById('submitBtn');
+            var notification = document.getElementById('notification');
+
+            loadingOverlay.style.display = 'none';
+            submitBtn.disabled = false;
+
+            notification.className = 'notification error';
+            notification.innerText = "Lỗi: " + error.message;
+            notification.style.display = 'block';
+        }
+
+    </script>
+</body>
+
+</html>

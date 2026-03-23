@@ -1,0 +1,49 @@
+# Hướng dẫn Cài đặt Ứng dụng Nhập Liệu
+
+Tài liệu này hướng dẫn cách đưa mã nguồn vào Google Sheet để tạo ứng dụng nhập liệu.
+
+## Bước 1: Chuẩn bị Google Sheet
+1.  Tạo một Google Sheet mới (hoặc mở Sheet có sẵn).
+2.  Đổi tên Sheet đầu tiên thành **Data**. Đây là nơi dữ liệu nhập sẽ được lưu. (Cột A: Thời gian, B: Email, C: Đơn vị, D: Mã NV, E: Số TB, F: Gói cước, G: Giá).
+3.  Tạo thêm một Sheet mới và đặt tên là **Config**.
+4.  Trong Sheet **Config**:
+    *   **Cột A (A2 trở đi):** Nhập danh sách tên các Đơn vị.
+    *   **Cột B (B2 trở đi):** Nhập danh sách Mã nhân viên.
+    *   *Lưu ý: Hàng đầu tiên (A1, B1) nên là tiêu đề (ví dụ: "Danh sách Đơn vị", "Danh sách NV"). Dữ liệu bắt đầu từ dòng 2.*
+
+## Bước 2: Thiết lập Google Apps Script
+1.  Trên thanh menu của Google Sheet, chọn **Tiện ích mở rộng (Extensions)** > **Apps Script**.
+2.  Trình soạn thảo Apps Script sẽ mở ra.
+3.  **File Code.gs**:
+    *   Mở file `Code.gs` mặc định.
+    *   Xóa hết nội dung bên trong.
+    *   Copy toàn bộ nội dung từ file `Code.gs` trong thư mục này và dán vào.
+    *   Nhấn biểu tượng Đĩa mềm (Save) hoặc `Ctrl + S` để lưu.
+4.  **File index.html**:
+    *   Nhấn dấu cộng **(+)** cạnh chữ "Tệp" (Files) bên trái > Chọn **HTML**.
+    *   Đặt tên file là `index` (không cần gõ .html, nso tự thêm).
+    *   Xóa hết nội dung mặc định.
+    *   Copy toàn bộ nội dung từ file `index.html` trong thư mục này và dán vào.
+    *   Lưu file lại (`Ctrl + S`).
+
+## Bước 3: Triển khai Ứng dụng (Deploy)
+1.  Góc trên bên phải, nhấn nút **Triển khai (Deploy)** màu xanh > Chọn **Bài triển khai mới (New deployment)**.
+2.  Trong hộp thoại hiện ra:
+    *   Bấm vào biểu tượng bánh răng (Types) > Chọn **Ứng dụng web (Web app)**.
+    *   **Mô tả (Description):** Nhập tên tùy ý (VD: App Nhập Liệu v1).
+    *   **Thực thi dưới dạng (Execute as):** Chọn **Tôi (Me)** (quan trọng để code lấy được email của người nhập).
+    *   **Ai có quyền truy cập (Who has access):**
+        *   Chọn **Bất kỳ ai trong tổ chức của tôi (Anyone within my organization)** (nếu dùng email VNPT/doanh nghiệp).
+        *   Hoặc **Bất kỳ ai có tài khoản Google (Anyone with Google account)**.
+3.  Nhấn **Triển khai (Deploy)**.
+4.  Google có thể yêu cầu cấp quyền truy cập. Hãy làm theo các bước:
+    *   Chọn **Xem lại quyền (Authorize access)**.
+    *   Chọn tài khoản mail của bạn.
+    *   Nếu hiện cảnh báo "Google chưa xác minh ứng dụng này", chọn **Nâng cao (Advanced)** > **Đi tới ... (không an toàn) (Go to ... (unsafe))**.
+    *   Nhấn **Cho phép (Allow)**.
+5.  Sau khi xong, bạn sẽ nhận được một đường link **Ứng dụng web (Web App URL)**.
+6.  Copy link này và gửi cho mọi người sử dụng.
+
+## Lưu ý quan trọng
+*   Người nhập dữ liệu cần đăng nhập Google thì mới ghi nhận được Email.
+*   Nếu bạn sửa code, bạn cần vào **Triển khai (Deploy)** > **Quản lý các bài triển khai (Manage deployments)** > Nhấn biểu tượng bút chì (Edit) > Tại mục **Phiên bản (Version)** chọn **Phiên bản mới (New version)** > Nhấn **Triển khai (Deploy)** thì thay đổi mới có hiệu lực.
