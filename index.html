@@ -35,6 +35,11 @@
             box-shadow: var(--box-shadow);
             width: 100%;
             max-width: 500px;
+            transition: max-width 0.3s ease;
+        }
+
+        .container.report-mode {
+            max-width: 1400px; /* Expand for report tab */
         }
 
         h2 {
@@ -473,6 +478,14 @@
             // Find button that calls this tab and activate it
             var index = (tabId === 'inputTab') ? 0 : 1;
             document.querySelectorAll('.tab-btn')[index].classList.add('active');
+
+            // Toggle report-mode class for wider container
+            var container = document.querySelector('.container');
+            if (tabId === 'reportTab') {
+                container.classList.add('report-mode');
+            } else {
+                container.classList.remove('report-mode');
+            }
         }
 
         function filterReportEmployees() {
