@@ -344,35 +344,73 @@
 
         // Load configuration data when page loads
         window.onload = function () {
-            document.getElementById('loadingOverlay').style.display = 'flex';
-            document.getElementById('loadingText').innerText = "Đang tải dữ liệu cấu hình...";
-
-            google.script.run.withSuccessHandler(populateDropdowns).withFailureHandler(handleError).getConfigData();
-
-            // Add event listener for Unit change
+            // Đăng ký các sự kiện tương tác trước
             document.getElementById('unitName').addEventListener('change', filterEmployees);
 
-            // Add event listener to capture employee name
             document.getElementById('empCode').addEventListener('change', function() {
                 var selectedCode = this.value;
                 var emp = globalEmployees.find(function(e) { return e.code === selectedCode; });
                 document.getElementById('empName').value = emp ? emp.name : '';
             });
 
-            // Add event listener for Service change
             document.getElementById('serviceType').addEventListener('change', updatePhoneValidation);
-
-            // Add event listener for Report Unit change
             document.getElementById('reportUnit').addEventListener('change', filterReportEmployees);
 
-            // Set default date for report to today
             document.getElementById('reportStartDate').valueAsDate = new Date();
             document.getElementById('reportEndDate').valueAsDate = new Date();
-        }
 
-            ;
+            // Kiểm tra môi trường Google Apps Script
+            if (typeof google === 'undefined' || !google.script || !google.script.run) {
+                console.warn("Chạy ở chế độ xem trước cục bộ (không có môi trường Google Apps Script)");
+                var mockData = {
+                    units: ['VNPT Cẩm Khê', 'VNPT Việt Trì', 'VNPT Thanh Ba', 'VNPT Tam Đảo'],
+                    employees: [
+                        { unit: 'VNPT Cẩm Khê', code: 'CKH001', name: 'Nguyễn Cao Minh' },
+                        { unit: 'VNPT Cẩm Khê', code: 'CKH002', name: 'Trần Văn Bình' },
+                        { unit: 'VNPT Việt Trì', code: 'VTR001', name: 'Lê Hoàng Nam' },
+                        { unit: 'VNPT Thanh Ba', code: 'TBA001', name: 'Phạm Thị Lan' },
+                        { unit: 'VNPT Tam Đảo', code: 'TDO001', name: 'Vũ Đức Thịnh' }
+                    ]
+                };
+                populateDropdowns(mockData);
+
+                var notification = document.getElementById('notification');
+                notification.className = 'notification';
+                notification.style.backgroundColor = '#e8f4fd';
+                notification.style.color = '#0056b3';
+                notification.style.border = '1px solid #b8daff';
+                notification.innerText = "ℹ️ Đang chạy ở chế độ xem trước cục bộ. Để kết nối và lưu dữ liệu vào Google Sheet, vui lòng triển khai mã nguồn lên Google Apps Script.";
+                notification.style.display = 'block';
+                return;
+            }
+
+            // Gọi server Google Apps Script lấy dữ liệu cấu hình
+            document.getElementById('loadingOverlay').style.display = 'flex';
+            document.getElementById('loadingText').innerText = "Đang tải dữ liệu cấu hình...";
+
+            var configTimeout = setTimeout(function() {
+                var overlay = document.getElementById('loadingOverlay');
+                if (overlay && overlay.style.display === 'flex') {
+                    overlay.style.display = 'none';
+                    handleError(new Error("Quá thời gian tải dữ liệu cấu hình (15s). Vui lòng kiểm tra lại kết nối hoặc quyền truy cập Google Sheet."));
+                }
+            }, 15000);
+
+            google.script.run
+                .withSuccessHandler(function(data) {
+                    clearTimeout(configTimeout);
+                    populateDropdowns(data);
+                })
+                .withFailureHandler(function(err) {
+                    clearTimeout(configTimeout);
+                    handleError(err);
+                })
+                .getConfigData();
+        };
 
         function populateDropdowns(data) {
+            document.getElementById('loadingOverlay').style.display = 'none';
+            if (!data) data = { units: [], employees: [] };
             var unitSelect = document.getElementById('unitName');
             var reportUnitSelect = document.getElementById('reportUnit');
             globalEmployees = data.employees || [];
@@ -396,16 +434,12 @@
                     reportOption.text = unit;
                     reportUnitSelect.appendChild(reportOption);
                 });
-            }
-
-            else {
-                unitSelect.innerHTML = '<option value="" disabled selected>Không có dữ liệu Đơn vị</option>';
+            } else {
+                unitSelect.innerHTML = '<option value="" disabled selected>Chưa có dữ liệu Đơn vị (Hãy thêm vào sheet Config)</option>';
             }
 
             // Initial filter (will clear employee dropdown)
             filterEmployees();
-
-            document.getElementById('loadingOverlay').style.display = 'none';
         }
 
         function filterEmployees() {
@@ -529,6 +563,15 @@
             var unit = document.getElementById('reportUnit').value;
             var empCode = document.getElementById('reportEmp').value;
 
+            if (typeof google === 'undefined' || !google.script || !google.script.run) {
+                renderReport([
+                    { time: '09:15 11/09/2026', unit: 'VNPT Cẩm Khê', empCode: 'CKH001', empName: 'Nguyễn Cao Minh', phone: '1381234567', service: 'DDTT', price: 120000, note: 'Số mẫu dải mới 138' },
+                    { time: '10:45 11/09/2026', unit: 'VNPT Việt Trì', empCode: 'VTR001', empName: 'Lê Hoàng Nam', phone: '841389876543', service: 'DDTS', price: 250000, note: 'Số mẫu dải mới 84138' },
+                    { time: '14:20 11/09/2026', unit: 'VNPT Cẩm Khê', empCode: 'CKH002', empName: 'Trần Văn Bình', phone: '912345678', service: 'DDTT', price: 90000, note: 'Số di động chuẩn' }
+                ]);
+                return;
+            }
+
             document.getElementById('loadingOverlay').style.display = 'flex';
             document.getElementById('loadingText').innerText = "Đang tra cứu...";
 
@@ -590,6 +633,13 @@
             var loadingOverlay = document.getElementById('loadingOverlay');
             var loadingText = document.getElementById('loadingText');
             var notification = document.getElementById('notification');
+
+            if (typeof google === 'undefined' || !google.script || !google.script.run) {
+                notification.className = 'notification error';
+                notification.innerText = "Chế độ xem trước: Không có môi trường Google Apps Script để lưu dữ liệu vào Google Sheet. Vui lòng deploy lên Google Apps Script!";
+                notification.style.display = 'block';
+                return;
+            }
 
             // UI Handling
             submitBtn.disabled = true;
