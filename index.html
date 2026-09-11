@@ -443,16 +443,20 @@
             }
         }
 
+        // [CHANGE_LOG] 2026-09-11 17:48:00 | Editor: AI - Antigravity (Gemini 3.8 Flash) | Mục đích: Cập nhật cho phép nhập dải số VinaPhone mới 84138xxxxxxx (10 số sau 84, bắt đầu bằng 138 hoặc 84138)
         function updatePhoneValidation() {
             var serviceSelect = document.getElementById('serviceType');
             var phoneInput = document.getElementById('phoneNumber');
             var service = serviceSelect.value;
 
             if (service === 'DDTT' || service === 'DDTS') {
-                phoneInput.pattern = '^[1-9][0-9]{8}$';
-                phoneInput.title = 'Số điện thoại phải gồm 9 chữ số và bắt đầu từ 1-9';
-                phoneInput.maxLength = 9;
-                phoneInput.placeholder = 'Nhập số thuê bao (VD: 912345678)...';
+                // Cho phép:
+                // 1. Số di động 9 chữ số thông thường (đầu [3,5,7,8,9], VD: 912345678, có thể kèm 84 hoặc 0)
+                // 2. Dải số mới VinaPhone gồm 10 chữ số sau 84 bắt đầu bằng 138 (VD: 1381234567, hoặc có đầu 84/0 như 841381234567)
+                phoneInput.pattern = '^(?:(84|0)?138[0-9]{7}|(84|0)?[35789][0-9]{8})$';
+                phoneInput.title = 'Số thuê bao: 9 số (VD: 912345678) hoặc dải số mới 138/84138 (10 số sau 84, VD: 1381234567, 841381234567)';
+                phoneInput.maxLength = 12;
+                phoneInput.placeholder = 'Nhập số thuê bao (VD: 912345678, 1381234567, 841381234567)...';
             }
 
             else {
@@ -609,6 +613,7 @@
                     document.getElementById('unitName').selectedIndex = 0;
                     document.getElementById('empCode').innerHTML = '<option value="" disabled selected>-- Chọn Mã Nhân viên --</option>';
                     document.getElementById('empName').value = '';
+                    updatePhoneValidation();
 
                     // Hide notification after 5 seconds
                     setTimeout(function () {

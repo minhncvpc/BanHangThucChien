@@ -103,10 +103,12 @@ function processForm(formObject) {
   var timestamp = new Date();
   var userEmail = Session.getActiveUser().getEmail();
 
+  // [CHANGE_LOG] 2026-09-11 17:48:00 | Editor: AI - Antigravity (Gemini 3.8 Flash) | Mục đích: Chuẩn hóa trim khoảng trắng số thuê bao và đối soát trùng linh hoạt (hỗ trợ cả 84138xxxxxxx và 138xxxxxxx)
   // Normalize data
   var unit = formObject.unitName;
   var empCode = formObject.empCode;
-  var phone = "'" + formObject.phoneNumber; // Force string for phone numbers
+  var rawPhone = formObject.phoneNumber ? String(formObject.phoneNumber).trim() : '';
+  var phone = "'" + rawPhone; // Force string for phone numbers
   var serviceType = formObject.serviceType;
   var price = formObject.price;
   var note = formObject.note;
@@ -115,15 +117,15 @@ function processForm(formObject) {
   // DUPLICATE CHECK
   // Check if same phone number already exists in the system
   var data = dataSheet.getDataRange().getValues();
+  var normRawPhone = rawPhone.replace(/^(84|0)/, '');
 
   for (var i = 1; i < data.length; i++) { // Skip header
     var rowDate = new Date(data[i][0]);
-    var rowPhone = String(data[i][4]); // Column 5 is Phone (0-based 4)
-    // Note: getValues() returns value. If stored as '123, value is 123.
-    // formObject.phoneNumber is just string "123".
+    var rowPhone = String(data[i][4]).trim(); // Column 5 is Phone (0-based 4)
+    var normRowPhone = rowPhone.replace(/^(84|0)/, '');
 
     // Compare
-    if (rowPhone === formObject.phoneNumber) {
+    if (rowPhone === rawPhone || (normRawPhone && normRowPhone.length >= 9 && normRowPhone === normRawPhone)) {
       // Duplicate found
       var dupTime = Utilities.formatDate(rowDate, Session.getScriptTimeZone(), "HH:mm:ss dd/MM/yyyy");
       var dupEmail = data[i][1];
@@ -131,7 +133,7 @@ function processForm(formObject) {
 
       return {
         success: false,
-        message: "Số thuê bao " + formObject.phoneNumber + " đã được nhập lúc " + dupTime + " bởi " + dupEmail + " cho nhân viên " + dupEmp
+        message: "Số thuê bao " + rawPhone + " đã được nhập lúc " + dupTime + " bởi " + dupEmail + " cho nhân viên " + dupEmp
       };
     }
   }
