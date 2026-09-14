@@ -155,7 +155,7 @@ function processForm(formObject) {
   // Normalize data
   var unit = formObject.unitName || '';
   var empCode = formObject.empCode || '';
-  var rawPhone = formObject.phoneNumber ? String(formObject.phoneNumber).trim() : '';
+  var rawPhone = formObject.phoneNumber ? String(formObject.phoneNumber).trim().replace(/[\s.\-_()]/g, '') : '';
   var phone = "'" + rawPhone; // Force string for phone numbers
   var serviceType = formObject.serviceType || '';
   var price = formObject.price || 0;
@@ -164,14 +164,14 @@ function processForm(formObject) {
 
   // DUPLICATE CHECK
   var data = dataSheet.getDataRange().getValues();
-  var normRawPhone = rawPhone.replace(/^(84|0)/, '');
+  var normRawPhone = rawPhone.replace(/^(\+?84|0)/, '');
 
   for (var i = 1; i < data.length; i++) { // Skip header
     var rowDate = data[i][0] ? new Date(data[i][0]) : null;
-    var rowPhone = String(data[i][4] || '').trim();
+    var rowPhone = String(data[i][4] || '').trim().replace(/[\s.\-_()]/g, '');
     if (!rowPhone) continue;
 
-    var normRowPhone = rowPhone.replace(/^(84|0)/, '');
+    var normRowPhone = rowPhone.replace(/^(\+?84|0)/, '');
 
     // Compare exact or normalized phone
     if (rowPhone === rawPhone || (normRawPhone && normRowPhone.length >= 9 && normRowPhone === normRawPhone)) {
