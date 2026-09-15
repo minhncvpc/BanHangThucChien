@@ -356,12 +356,15 @@
             document.getElementById('serviceType').addEventListener('change', updatePhoneValidation);
             document.getElementById('reportUnit').addEventListener('change', filterReportEmployees);
 
-            // Tự động làm sạch khoảng trắng, dấu chấm, gạch ngang khi nhập số điện thoại
+            // Tự động làm sạch khoảng trắng, dấu chấm, gạch ngang khi nhập số điện thoại di động (DDTT/DDTS)
             var phoneEl = document.getElementById('phoneNumber');
             phoneEl.addEventListener('input', function() {
-                var cleaned = this.value.replace(/[\s.\-_()]/g, '');
-                if (this.value !== cleaned) {
-                    this.value = cleaned;
+                var serv = document.getElementById('serviceType') ? document.getElementById('serviceType').value : '';
+                if (serv === 'DDTT' || serv === 'DDTS') {
+                    var cleaned = this.value.replace(/[\s.\-_()]/g, '');
+                    if (this.value !== cleaned) {
+                        this.value = cleaned;
+                    }
                 }
             });
 
@@ -489,13 +492,21 @@
             }
         }
 
-        // [CHANGE_LOG] 2026-09-14 08:55:00 | Editor: AI - Antigravity (Gemini 3.8 Flash) | Mục đích: Tối ưu validation đầu số 138 (hỗ trợ cả 7-8 số sau 138, tiền tố +84/84/0/không tiền tố, bỏ ^ $ gây lỗi HTML5 và tự động làm sạch ký tự phân cách)
+        // [CHANGE_LOG] 2026-09-15 08:45:00 | Editor: AI - Antigravity (Gemini 3.8 Flash) | Mục đích: Cho phép Fiber Khôi phục nhập text tùy ý, gồm số, chữ cái, dấu _, -, và ký tự đặc biệt; Chỉ áp dụng regex và auto-clean số điện thoại cho DDTT/DDTS
         function updatePhoneValidation() {
             var serviceSelect = document.getElementById('serviceType');
             var phoneInput = document.getElementById('phoneNumber');
+            var phoneLabel = document.querySelector('label[for="phoneNumber"]');
             var service = serviceSelect ? serviceSelect.value : '';
 
-            if (service === 'DDTT' || service === 'DDTS' || !service) {
+            if (service === 'Fiber Khôi phục') {
+                // Fiber Khôi phục: cho phép nhập text tùy ý, gồm chữ cái, số, dấu _, -, và các ký tự đặc biệt
+                phoneInput.removeAttribute('pattern');
+                phoneInput.removeAttribute('title');
+                phoneInput.maxLength = 100;
+                phoneInput.placeholder = 'Nhập mã/số thuê bao Fiber (VD: ptoh_123456, account_ftth)...';
+                if (phoneLabel) phoneLabel.innerText = 'Số/Mã thuê bao Fiber';
+            } else if (service === 'DDTT' || service === 'DDTS') {
                 // Cho phép linh hoạt:
                 // 1. Dải số mới VinaPhone 138: 138xxxxxxx / 138xxxxxxxx (7-8 chữ số sau 138, hỗ trợ tiền tố +84, 84, 0 hoặc bắt đầu trực tiếp bằng 138)
                 // 2. Số di động 9 chữ số thông thường (bắt đầu 1-9, hỗ trợ tiền tố +84, 84, 0 hoặc 9 chữ số)
@@ -504,14 +515,14 @@
                 phoneInput.title = 'Số thuê bao di động: 9 số (VD: 912345678, 0912345678) hoặc dải số mới 138 (VD: 138xxxxxxx, 0138xxxxxxx, 84138xxxxxxx)';
                 phoneInput.maxLength = 16;
                 phoneInput.placeholder = 'Nhập số thuê bao (VD: 912345678 hoặc 138xxxxxxx, 84138xxxxxxx)...';
-            }
-
-            else {
-                // Fiber Khôi phục hoặc dịch vụ khác
+                if (phoneLabel) phoneLabel.innerText = 'Số thuê bao';
+            } else {
+                // Chưa chọn dịch vụ: không áp đặt pattern
                 phoneInput.removeAttribute('pattern');
                 phoneInput.removeAttribute('title');
-                phoneInput.maxLength = 50;
-                phoneInput.placeholder = 'Nhập số thuê bao / tài khoản (tối đa 50 ký tự)...';
+                phoneInput.maxLength = 100;
+                phoneInput.placeholder = 'Chọn dịch vụ trước hoặc nhập số thuê bao...';
+                if (phoneLabel) phoneLabel.innerText = 'Số thuê bao';
             }
         }
 

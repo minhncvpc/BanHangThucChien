@@ -153,28 +153,50 @@ function processForm(formObject) {
   }
 
   // Normalize data
+  // [CHANGE_LOG] 2026-09-15 08:45:00 | Editor: AI - Antigravity (Gemini 3.8 Flash) | Mục đích: Cho phép Fiber Khôi phục nhập text tùy ý (giữ nguyên dấu _, -, ký tự đặc biệt); Chỉ auto-clean regex số điện thoại đối với DDTT/DDTS
   var unit = formObject.unitName || '';
   var empCode = formObject.empCode || '';
-  var rawPhone = formObject.phoneNumber ? String(formObject.phoneNumber).trim().replace(/[\s.\-_()]/g, '') : '';
-  var phone = "'" + rawPhone; // Force string for phone numbers
   var serviceType = formObject.serviceType || '';
+  var rawPhone = '';
+  if (serviceType === 'DDTT' || serviceType === 'DDTS') {
+    rawPhone = formObject.phoneNumber ? String(formObject.phoneNumber).trim().replace(/[\s.\-_()]/g, '') : '';
+  } else {
+    // Fiber Khôi phục hoặc dịch vụ khác: Cho phép nhập text tự do, bảo lưu dấu _, -, ký tự đặc biệt
+    rawPhone = formObject.phoneNumber ? String(formObject.phoneNumber).trim() : '';
+  }
+  var phone = "'" + rawPhone; // Force string for phone numbers and account codes
   var price = formObject.price || 0;
   var note = formObject.note || '';
   var empName = formObject.empName || '';
 
   // DUPLICATE CHECK
   var data = dataSheet.getDataRange().getValues();
-  var normRawPhone = rawPhone.replace(/^(\+?84|0)/, '');
+  var isMobile = (serviceType === 'DDTT' || serviceType === 'DDTS');
+  var normRawPhone = isMobile ? rawPhone.replace(/^(\+?84|0)/, '') : '';
 
   for (var i = 1; i < data.length; i++) { // Skip header
     var rowDate = data[i][0] ? new Date(data[i][0]) : null;
-    var rowPhone = String(data[i][4] || '').trim().replace(/[\s.\-_()]/g, '');
-    if (!rowPhone) continue;
+    var rowPhoneRaw = String(data[i][4] || '').trim();
+    if (!rowPhoneRaw) continue;
 
-    var normRowPhone = rowPhone.replace(/^(\+?84|0)/, '');
+    var rowService = String(data[i][5] || '').trim();
+    var isRowMobile = (rowService === 'DDTT' || rowService === 'DDTS');
+    var isDuplicate = false;
 
-    // Compare exact or normalized phone
-    if (rowPhone === rawPhone || (normRawPhone && normRowPhone.length >= 9 && normRowPhone === normRawPhone)) {
+    if (isMobile && isRowMobile) {
+      var rowPhone = rowPhoneRaw.replace(/[\s.\-_()]/g, '');
+      var normRowPhone = rowPhone.replace(/^(\+?84|0)/, '');
+      if (rowPhone === rawPhone || (normRawPhone && normRowPhone.length >= 9 && normRowPhone === normRawPhone)) {
+        isDuplicate = true;
+      }
+    } else {
+      // Fiber Khôi phục: so sánh chính xác không phân biệt hoa thường, bảo lưu nguyên vẹn ký tự gạch dưới _ và ký tự đặc biệt
+      if (rowPhoneRaw.toLowerCase() === rawPhone.toLowerCase()) {
+        isDuplicate = true;
+      }
+    }
+
+    if (isDuplicate) {
       var dupTime = (rowDate && !isNaN(rowDate.getTime())) 
         ? Utilities.formatDate(rowDate, Session.getScriptTimeZone(), "HH:mm:ss dd/MM/yyyy") 
         : "trước đó";
@@ -183,7 +205,7 @@ function processForm(formObject) {
 
       return {
         success: false,
-        message: "Số thuê bao " + rawPhone + " đã được nhập lúc " + dupTime + " bởi " + dupEmail + (dupEmp ? (" cho nhân viên " + dupEmp) : "")
+        message: (isMobile ? "Số thuê bao " : "Mã/Số thuê bao ") + rawPhone + " đã được nhập lúc " + dupTime + " bởi " + dupEmail + (dupEmp ? (" cho nhân viên " + dupEmp) : "")
       };
     }
   }
