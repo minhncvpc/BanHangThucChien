@@ -356,12 +356,24 @@
             document.getElementById('serviceType').addEventListener('change', updatePhoneValidation);
             document.getElementById('reportUnit').addEventListener('change', filterReportEmployees);
 
-            // Tự động làm sạch khoảng trắng, dấu chấm, gạch ngang khi nhập số điện thoại di động (DDTT/DDTS)
+            // Tự động làm sạch khoảng trắng, dấu chấm, gạch ngang và loại bỏ tiền tố thừa (+84, 84 mã quốc gia hoặc số 0 đầu) cho DDTT/DDTS
             var phoneEl = document.getElementById('phoneNumber');
             phoneEl.addEventListener('input', function() {
                 var serv = document.getElementById('serviceType') ? document.getElementById('serviceType').value : '';
                 if (serv === 'DDTT' || serv === 'DDTS') {
                     var cleaned = this.value.replace(/[\s.\-_()]/g, '');
+                    // Nếu paste có +84 ở đầu
+                    if (cleaned.startsWith('+84')) {
+                        cleaned = cleaned.substring(3);
+                    }
+                    // Nếu paste hoặc gõ mã quốc gia 84 ở đầu mà tổng độ dài >= 11 (VD: 84912345678 -> 912345678)
+                    if (cleaned.startsWith('84') && cleaned.length >= 11) {
+                        cleaned = cleaned.substring(2);
+                    }
+                    // Nếu gõ số 0 ở đầu (VD: 0912345678 -> 912345678, 0812345678 -> 812345678)
+                    if (cleaned.startsWith('0')) {
+                        cleaned = cleaned.replace(/^0+/, '');
+                    }
                     if (this.value !== cleaned) {
                         this.value = cleaned;
                     }
@@ -492,7 +504,7 @@
             }
         }
 
-        // [CHANGE_LOG] 2026-09-15 08:45:00 | Editor: AI - Antigravity (Gemini 3.8 Flash) | Mục đích: Cho phép Fiber Khôi phục nhập text tùy ý, gồm số, chữ cái, dấu _, -, và ký tự đặc biệt; Chỉ áp dụng regex và auto-clean số điện thoại cho DDTT/DDTS
+        // [CHANGE_LOG] 2026-09-15 13:40:00 | Editor: AI - Antigravity (Gemini 3.8 Flash) | Mục đích: Cập nhật chuẩn hóa số di động bỏ tiền tố 84; chuỗi nhập chỉ bao gồm 9 số đầu 8xxx, 9xxx hoặc 10 số đầu 128xxx, 138xxx
         function updatePhoneValidation() {
             var serviceSelect = document.getElementById('serviceType');
             var phoneInput = document.getElementById('phoneNumber');
@@ -507,15 +519,13 @@
                 phoneInput.placeholder = 'Nhập mã/số thuê bao Fiber (VD: ptoh_123456, account_ftth)...';
                 if (phoneLabel) phoneLabel.innerText = 'Số/Mã thuê bao Fiber';
             } else if (service === 'DDTT' || service === 'DDTS') {
-                // Cho phép linh hoạt:
-                // 1. Dải số mới VinaPhone 138: 138xxxxxxx / 138xxxxxxxx (7-8 chữ số sau 138, hỗ trợ tiền tố +84, 84, 0 hoặc bắt đầu trực tiếp bằng 138)
-                // 2. Số di động 9 chữ số thông thường (bắt đầu 1-9, hỗ trợ tiền tố +84, 84, 0 hoặc 9 chữ số)
-                // Bỏ ^ và $ vì HTML5 pattern tự động neo (implicitly anchored)
-                phoneInput.pattern = '(?:(\\+?84|0)?138[0-9]{7,8}|(\\+?84|0)?[1-9][0-9]{8})';
-                phoneInput.title = 'Số thuê bao di động: 9 số (VD: 912345678, 0912345678) hoặc dải số mới 138 (VD: 138xxxxxxx, 0138xxxxxxx, 84138xxxxxxx)';
-                phoneInput.maxLength = 16;
-                phoneInput.placeholder = 'Nhập số thuê bao (VD: 912345678 hoặc 138xxxxxxx, 84138xxxxxxx)...';
-                if (phoneLabel) phoneLabel.innerText = 'Số thuê bao';
+                // Bỏ không nhập đoạn 84 ở đầu số thuê bao nữa
+                // Chuỗi nhập vào chỉ bao gồm 9 số với đầu 8xxx, 9xxx hoặc 10 số với đầu 128xxx, 138xxx
+                phoneInput.pattern = '(?:[89][0-9]{8}|(?:128|138)[0-9]{7})';
+                phoneInput.title = 'Số di động gồm 9 số đầu 8xxx, 9xxx (VD: 912345678, 812345678) hoặc 10 số đầu 128xxx, 138xxx (VD: 1281234567, 1381234567). Bỏ không nhập 84 ở đầu.';
+                phoneInput.maxLength = 10;
+                phoneInput.placeholder = 'Nhập 9 số (đầu 8, 9) hoặc 10 số (đầu 128, 138)...';
+                if (phoneLabel) phoneLabel.innerText = 'Số thuê bao (9-10 số, không nhập 84)';
             } else {
                 // Chưa chọn dịch vụ: không áp đặt pattern
                 phoneInput.removeAttribute('pattern');
@@ -589,9 +599,9 @@
 
             if (typeof google === 'undefined' || !google.script || !google.script.run) {
                 renderReport([
-                    { time: '09:15 11/09/2026', unit: 'VNPT Cẩm Khê', empCode: 'CKH001', empName: 'Nguyễn Cao Minh', phone: '1381234567', service: 'DDTT', price: 120000, note: 'Số mẫu dải mới 138' },
-                    { time: '10:45 11/09/2026', unit: 'VNPT Việt Trì', empCode: 'VTR001', empName: 'Lê Hoàng Nam', phone: '841389876543', service: 'DDTS', price: 250000, note: 'Số mẫu dải mới 84138' },
-                    { time: '14:20 11/09/2026', unit: 'VNPT Cẩm Khê', empCode: 'CKH002', empName: 'Trần Văn Bình', phone: '912345678', service: 'DDTT', price: 90000, note: 'Số di động chuẩn' }
+                    { time: '09:15 11/09/2026', unit: 'VNPT Cẩm Khê', empCode: 'CKH001', empName: 'Nguyễn Cao Minh', phone: '1381234567', service: 'DDTT', price: 120000, note: 'Số mẫu dải 138 (10 số)' },
+                    { time: '10:45 11/09/2026', unit: 'VNPT Việt Trì', empCode: 'VTR001', empName: 'Lê Hoàng Nam', phone: '1289876543', service: 'DDTS', price: 250000, note: 'Số mẫu dải 128 (10 số)' },
+                    { time: '14:20 11/09/2026', unit: 'VNPT Cẩm Khê', empCode: 'CKH002', empName: 'Trần Văn Bình', phone: '912345678', service: 'DDTT', price: 90000, note: 'Số di động 9 số đầu 9xxx' }
                 ]);
                 return;
             }

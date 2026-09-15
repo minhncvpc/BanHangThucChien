@@ -202,13 +202,31 @@ function processForm(formObject) {
   }
 
   // Normalize data
-  // [CHANGE_LOG] 2026-09-15 08:45:00 | Editor: AI - Antigravity (Gemini 3.8 Flash) | Mục đích: Cho phép Fiber Khôi phục nhập text tùy ý (giữ nguyên dấu _, -, ký tự đặc biệt); Chỉ auto-clean regex số điện thoại đối với DDTT/DDTS
+  // [CHANGE_LOG] 2026-09-15 13:40:00 | Editor: AI - Antigravity (Gemini 3.8 Flash) | Mục đích: Chuẩn hóa số di động bỏ tiền tố 84; chỉ cho phép 9 số đầu 8xxx, 9xxx hoặc 10 số đầu 128xxx, 138xxx; tự động làm sạch khoảng trắng và tiền tố thừa
   var unit = formObject.unitName || '';
   var empCode = formObject.empCode || '';
   var serviceType = formObject.serviceType || '';
   var rawPhone = '';
   if (serviceType === 'DDTT' || serviceType === 'DDTS') {
     rawPhone = formObject.phoneNumber ? String(formObject.phoneNumber).trim().replace(/[\s.\-_()]/g, '') : '';
+    if (rawPhone.startsWith('+84')) {
+      rawPhone = rawPhone.substring(3);
+    }
+    if (rawPhone.startsWith('84') && rawPhone.length >= 11) {
+      rawPhone = rawPhone.substring(2);
+    }
+    if (rawPhone.startsWith('0')) {
+      rawPhone = rawPhone.replace(/^0+/, '');
+    }
+
+    // Kiểm tra định dạng: chỉ bao gồm 9 số với đầu 8xxx, 9xxx hoặc 10 số với đầu 128xxx, 138xxx (không nhập 84 ở đầu)
+    var mobileRegex = /^(?:[89][0-9]{8}|(?:128|138)[0-9]{7})$/;
+    if (!mobileRegex.test(rawPhone)) {
+      return {
+        success: false,
+        message: "Số thuê bao di động không hợp lệ (" + rawPhone + "). Quy định chỉ bao gồm 9 số đầu 8xxx, 9xxx hoặc 10 số đầu 128xxx, 138xxx (không nhập mã 84 ở đầu)."
+      };
+    }
   } else {
     // Fiber Khôi phục hoặc dịch vụ khác: Cho phép nhập text tự do, bảo lưu dấu _, -, ký tự đặc biệt
     rawPhone = formObject.phoneNumber ? String(formObject.phoneNumber).trim() : '';
@@ -219,12 +237,10 @@ function processForm(formObject) {
   var empName = formObject.empName || '';
 
   // DUPLICATE CHECK - Chỉ kiểm tra trùng lặp trong CÙNG 1 NGÀY BÁN HÀNG
-  // [CHANGE_LOG] 2026-09-15 10:15:00 | Editor: AI - Antigravity (Gemini 3.8 Flash) | Mục đích: Giới hạn phạm vi kiểm tra trùng lặp thuê bao trong CÙNG 1 NGÀY BÁN HÀNG (cho phép nhập lại nếu khác ngày)
   var data = dataSheet.getDataRange().getValues();
   var scriptTz = (typeof Session !== 'undefined' && Session.getScriptTimeZone) ? Session.getScriptTimeZone() : 'Asia/Bangkok';
   var todayKey = formatDayKey(timestamp, scriptTz);
   var isMobile = (serviceType === 'DDTT' || serviceType === 'DDTS');
-  var normRawPhone = isMobile ? rawPhone.replace(/^(\+?84|0)/, '') : '';
 
   for (var i = 1; i < data.length; i++) { // Skip header
     var rowDate = parseDate(data[i][0]);
@@ -246,8 +262,17 @@ function processForm(formObject) {
 
     if (isMobile && isRowMobile) {
       var rowPhone = rowPhoneRaw.replace(/[\s.\-_()]/g, '');
-      var normRowPhone = rowPhone.replace(/^(\+?84|0)/, '');
-      if (rowPhone === rawPhone || (normRawPhone && normRowPhone.length >= 9 && normRowPhone === normRawPhone)) {
+      var normRowPhone = rowPhone;
+      if (normRowPhone.startsWith('+84')) {
+        normRowPhone = normRowPhone.substring(3);
+      } else if (normRowPhone.startsWith('84') && normRowPhone.length >= 11) {
+        normRowPhone = normRowPhone.substring(2);
+      }
+      if (normRowPhone.startsWith('0')) {
+        normRowPhone = normRowPhone.replace(/^0+/, '');
+      }
+
+      if (rowPhone === rawPhone || normRowPhone === rawPhone) {
         isDuplicate = true;
       }
     } else if (!isMobile && !isRowMobile) {
