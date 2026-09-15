@@ -83,6 +83,55 @@ function getDataSheet(ss) {
 }
 
 /**
+ * Safely parse a date from Google Sheet value (handles Date objects, ISO strings, and dd/MM/yyyy HH:mm:ss)
+ * [CHANGE_LOG] 2026-09-15 10:15:00 | Editor: AI - Antigravity (Gemini 3.8 Flash) | Mục đích: Chuẩn hóa parseDate an toàn mọi định dạng (Date object, dd/MM/yyyy, ISO) và formatDayKey theo múi giờ script
+ */
+function parseDate(val) {
+  if (!val) return null;
+  if (val instanceof Date) {
+    return isNaN(val.getTime()) ? null : val;
+  }
+  if (typeof val === 'string') {
+    var str = val.trim();
+    if (!str) return null;
+    // Hỗ trợ dd/MM/yyyy hoặc dd/MM/yyyy HH:mm:ss
+    var dmyMatch = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?/);
+    if (dmyMatch) {
+      var d = parseInt(dmyMatch[1], 10);
+      var m = parseInt(dmyMatch[2], 10) - 1;
+      var y = parseInt(dmyMatch[3], 10);
+      var hh = dmyMatch[4] ? parseInt(dmyMatch[4], 10) : 0;
+      var mm = dmyMatch[5] ? parseInt(dmyMatch[5], 10) : 0;
+      var ss = dmyMatch[6] ? parseInt(dmyMatch[6], 10) : 0;
+      var parsed = new Date(y, m, d, hh, mm, ss);
+      if (!isNaN(parsed.getTime())) return parsed;
+    }
+    // Hỗ trợ định dạng ISO yyyy-MM-dd
+    var parsedIso = new Date(str);
+    if (!isNaN(parsedIso.getTime())) return parsedIso;
+  }
+  return null;
+}
+
+/**
+ * Format a Date object to yyyy-MM-dd in the local script timezone (Asia/Bangkok)
+ */
+function formatDayKey(dateObj, timeZone) {
+  if (!dateObj || isNaN(dateObj.getTime())) return '';
+  var tz = timeZone || (typeof Session !== 'undefined' && Session.getScriptTimeZone ? Session.getScriptTimeZone() : 'Asia/Bangkok');
+  if (typeof Utilities !== 'undefined' && Utilities.formatDate) {
+    try {
+      return Utilities.formatDate(dateObj, tz, 'yyyy-MM-dd');
+    } catch (e) {}
+  }
+  var y = dateObj.getFullYear();
+  var m = ('0' + (dateObj.getMonth() + 1)).slice(-2);
+  var d = ('0' + dateObj.getDate()).slice(-2);
+  return y + '-' + m + '-' + d;
+}
+
+
+/**
  * Get configuration data from the 'Config' sheet
  * Returns list of unique units and list of all employees with their metadata
  */
@@ -169,13 +218,25 @@ function processForm(formObject) {
   var note = formObject.note || '';
   var empName = formObject.empName || '';
 
-  // DUPLICATE CHECK
+  // DUPLICATE CHECK - Chỉ kiểm tra trùng lặp trong CÙNG 1 NGÀY BÁN HÀNG
+  // [CHANGE_LOG] 2026-09-15 10:15:00 | Editor: AI - Antigravity (Gemini 3.8 Flash) | Mục đích: Giới hạn phạm vi kiểm tra trùng lặp thuê bao trong CÙNG 1 NGÀY BÁN HÀNG (cho phép nhập lại nếu khác ngày)
   var data = dataSheet.getDataRange().getValues();
+  var scriptTz = (typeof Session !== 'undefined' && Session.getScriptTimeZone) ? Session.getScriptTimeZone() : 'Asia/Bangkok';
+  var todayKey = formatDayKey(timestamp, scriptTz);
   var isMobile = (serviceType === 'DDTT' || serviceType === 'DDTS');
   var normRawPhone = isMobile ? rawPhone.replace(/^(\+?84|0)/, '') : '';
 
   for (var i = 1; i < data.length; i++) { // Skip header
-    var rowDate = data[i][0] ? new Date(data[i][0]) : null;
+    var rowDate = parseDate(data[i][0]);
+    if (!rowDate) continue;
+
+    // 1. Kiểm tra ngày bán hàng: Nếu KHÔNG cùng ngày bán hàng với thời điểm hiện tại -> Bỏ qua (cho phép nhập)
+    var rowDayKey = formatDayKey(rowDate, scriptTz);
+    if (rowDayKey !== todayKey) {
+      continue;
+    }
+
+    // 2. Cùng ngày bán hàng -> Kiểm tra xem có trùng số thuê bao/mã tài khoản hay không
     var rowPhoneRaw = String(data[i][4] || '').trim();
     if (!rowPhoneRaw) continue;
 
@@ -189,23 +250,30 @@ function processForm(formObject) {
       if (rowPhone === rawPhone || (normRawPhone && normRowPhone.length >= 9 && normRowPhone === normRawPhone)) {
         isDuplicate = true;
       }
-    } else {
+    } else if (!isMobile && !isRowMobile) {
       // Fiber Khôi phục: so sánh chính xác không phân biệt hoa thường, bảo lưu nguyên vẹn ký tự gạch dưới _ và ký tự đặc biệt
+      if (rowPhoneRaw.toLowerCase() === rawPhone.toLowerCase()) {
+        isDuplicate = true;
+      }
+    } else if (rowService === serviceType) {
       if (rowPhoneRaw.toLowerCase() === rawPhone.toLowerCase()) {
         isDuplicate = true;
       }
     }
 
     if (isDuplicate) {
-      var dupTime = (rowDate && !isNaN(rowDate.getTime())) 
-        ? Utilities.formatDate(rowDate, Session.getScriptTimeZone(), "HH:mm:ss dd/MM/yyyy") 
+      var dupTime = (typeof Utilities !== 'undefined' && Utilities.formatDate) 
+        ? Utilities.formatDate(rowDate, scriptTz, "HH:mm:ss") 
         : "trước đó";
+      var dupDateStr = (typeof Utilities !== 'undefined' && Utilities.formatDate)
+        ? Utilities.formatDate(rowDate, scriptTz, "dd/MM/yyyy")
+        : "";
       var dupEmail = data[i][1] || "người dùng khác";
       var dupEmp = data[i][3] || "";
 
       return {
         success: false,
-        message: (isMobile ? "Số thuê bao " : "Mã/Số thuê bao ") + rawPhone + " đã được nhập lúc " + dupTime + " bởi " + dupEmail + (dupEmp ? (" cho nhân viên " + dupEmp) : "")
+        message: (isMobile ? "Số thuê bao " : "Mã/Số thuê bao ") + rawPhone + " đã được nhập trong ngày hôm nay" + (dupDateStr ? (" (" + dupDateStr + ")") : "") + " lúc " + dupTime + " bởi " + dupEmail + (dupEmp ? (" cho nhân viên " + dupEmp) : "")
       };
     }
   }
@@ -256,8 +324,8 @@ function getReportData(startDateStr, endDateStr, unitName, empCode) {
     var row = data[i];
     if (!row || !row[0]) continue;
 
-    var rowDate = new Date(row[0]);
-    if (isNaN(rowDate.getTime())) continue; // Skip corrupted date rows
+    var rowDate = parseDate(row[0]);
+    if (!rowDate) continue; // Skip corrupted date rows
 
     var rowUnit = String(row[2] || '').trim();
     var rowEmpCode = String(row[3] || '').trim();
