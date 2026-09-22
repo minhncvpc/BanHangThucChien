@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html>
 
+<!-- [CHANGE_LOG] 2026-09-22 10:25:00 | Editor: AI - Antigravity (Gemini 3.8 Flash) | Mục đích: Cập nhật trường Giá cước cho phép không bắt buộc nhập hoặc nhập số >= 0 -->
 <head>
     <base target="_top">
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
@@ -306,8 +307,8 @@
                 <div class="form-group"><label for="phoneNumber">Số thuê bao</label><input type="text" id="phoneNumber"
                         name="phoneNumber" placeholder="Nhập số thuê bao..." required></div>
                 <!-- Giá cước -->
-                <div class="form-group"><label for="price">Giá cước</label><input type="number" id="price" name="price"
-                        placeholder="Nhập giá cước (tối đa 2,500,000)..." required min="50000" max="2500000"></div>
+                <div class="form-group"><label for="price">Giá cước (Không bắt buộc)</label><input type="number" id="price" name="price"
+                        placeholder="Nhập giá cước (>= 0, không bắt buộc)..." min="0" step="any"></div>
                 <!-- Ghi chú -->
                 <div class="form-group"><label for="note">Ghi chú (Không bắt
                         buộc)</label><textarea id="note" name="note" placeholder="Nhập ghi chú..." rows="3"></textarea>

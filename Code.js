@@ -1,5 +1,6 @@
 /**
  * Code.gs - Server-side logic for Data Entry App
+ * [CHANGE_LOG] 2026-09-22 10:25:00 | Editor: AI - Antigravity (Gemini 3.8 Flash) | Mục đích: Cập nhật giá cước cho phép không bắt buộc nhập hoặc nhập số >= 0 (mặc định 0 nếu để trống)
  * [CHANGE_LOG] 2026-09-11 17:55:00 | Editor: AI - Antigravity (Gemini 3.8 Flash) | Mục đích: Tối ưu hoá toàn diện cơ chế kết nối Sheet (ưu tiên ActiveSpreadsheet), tự động tạo Config/Data nếu thiếu, chống crash ngày tháng và xử lý khoảng trắng tên sheet
  */
 
@@ -232,7 +233,19 @@ function processForm(formObject) {
     rawPhone = formObject.phoneNumber ? String(formObject.phoneNumber).trim() : '';
   }
   var phone = "'" + rawPhone; // Force string for phone numbers and account codes
-  var price = formObject.price || 0;
+  // Chuẩn hóa giá cước: cho phép không nhập (mặc định 0) hoặc nhập số >= 0
+  var rawPrice = formObject.price;
+  var price = 0;
+  if (rawPrice !== undefined && rawPrice !== null && String(rawPrice).trim() !== '') {
+    var parsedPrice = Number(rawPrice);
+    if (isNaN(parsedPrice) || parsedPrice < 0) {
+      return {
+        success: false,
+        message: "Giá cước không hợp lệ (" + rawPrice + "). Giá cước phải là kiểu số lớn hơn hoặc bằng 0."
+      };
+    }
+    price = parsedPrice;
+  }
   var note = formObject.note || '';
   var empName = formObject.empName || '';
 
