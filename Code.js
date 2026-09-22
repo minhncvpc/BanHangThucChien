@@ -1,5 +1,6 @@
 /**
  * Code.gs - Server-side logic for Data Entry App
+ * [CHANGE_LOG] 2026-09-22 14:10:00 | Editor: AI - Antigravity (Gemini 3.8 Flash) | Mục đích: Cập nhật giá cước bắt buộc từ 30.000 đến dưới 2.500.000 VNĐ; kiểm tra trùng số/mã thuê bao trong vòng 60 ngày
  * [CHANGE_LOG] 2026-09-22 10:25:00 | Editor: AI - Antigravity (Gemini 3.8 Flash) | Mục đích: Cập nhật giá cước cho phép không bắt buộc nhập hoặc nhập số >= 0 (mặc định 0 nếu để trống)
  * [CHANGE_LOG] 2026-09-11 17:55:00 | Editor: AI - Antigravity (Gemini 3.8 Flash) | Mục đích: Tối ưu hoá toàn diện cơ chế kết nối Sheet (ưu tiên ActiveSpreadsheet), tự động tạo Config/Data nếu thiếu, chống crash ngày tháng và xử lý khoảng trắng tên sheet
  */
@@ -233,39 +234,41 @@ function processForm(formObject) {
     rawPhone = formObject.phoneNumber ? String(formObject.phoneNumber).trim() : '';
   }
   var phone = "'" + rawPhone; // Force string for phone numbers and account codes
-  // Chuẩn hóa giá cước: cho phép không nhập (mặc định 0) hoặc nhập số >= 0
+  // Chuẩn hóa và kiểm tra giá cước: bắt buộc nhập, >= 30000 và nhỏ hơn 2500000
   var rawPrice = formObject.price;
-  var price = 0;
-  if (rawPrice !== undefined && rawPrice !== null && String(rawPrice).trim() !== '') {
-    var parsedPrice = Number(rawPrice);
-    if (isNaN(parsedPrice) || parsedPrice < 0) {
-      return {
-        success: false,
-        message: "Giá cước không hợp lệ (" + rawPrice + "). Giá cước phải là kiểu số lớn hơn hoặc bằng 0."
-      };
-    }
-    price = parsedPrice;
+  if (rawPrice === undefined || rawPrice === null || String(rawPrice).trim() === '') {
+    return {
+      success: false,
+      message: "Giá cước là thông tin bắt buộc. Vui lòng nhập giá cước!"
+    };
+  }
+  var price = Number(rawPrice);
+  if (isNaN(price) || price < 30000 || price >= 2500000) {
+    return {
+      success: false,
+      message: "Giá cước không hợp lệ (" + rawPrice + "). Giá cước bắt buộc phải từ 30.000 đến dưới 2.500.000 VNĐ."
+    };
   }
   var note = formObject.note || '';
   var empName = formObject.empName || '';
 
-  // DUPLICATE CHECK - Chỉ kiểm tra trùng lặp trong CÙNG 1 NGÀY BÁN HÀNG
+  // DUPLICATE CHECK - Kiểm tra trùng lặp trong vòng 60 ngày
   var data = dataSheet.getDataRange().getValues();
   var scriptTz = (typeof Session !== 'undefined' && Session.getScriptTimeZone) ? Session.getScriptTimeZone() : 'Asia/Bangkok';
-  var todayKey = formatDayKey(timestamp, scriptTz);
   var isMobile = (serviceType === 'DDTT' || serviceType === 'DDTS');
+  var SIXTY_DAYS_MS = 60 * 24 * 60 * 60 * 1000;
 
   for (var i = 1; i < data.length; i++) { // Skip header
     var rowDate = parseDate(data[i][0]);
     if (!rowDate) continue;
 
-    // 1. Kiểm tra ngày bán hàng: Nếu KHÔNG cùng ngày bán hàng với thời điểm hiện tại -> Bỏ qua (cho phép nhập)
-    var rowDayKey = formatDayKey(rowDate, scriptTz);
-    if (rowDayKey !== todayKey) {
-      continue;
+    // 1. Kiểm tra mốc thời gian: Chỉ kiểm tra nếu bản ghi nằm trong vòng 60 ngày gần nhất
+    var diffMs = timestamp.getTime() - rowDate.getTime();
+    if (diffMs > SIXTY_DAYS_MS || diffMs < -86400000) {
+      continue; // Đã quá 60 ngày hoặc bản ghi sai lệch thời gian tương lai > 1 ngày -> Bỏ qua, cho phép nhập
     }
 
-    // 2. Cùng ngày bán hàng -> Kiểm tra xem có trùng số thuê bao/mã tài khoản hay không
+    // 2. Nằm trong vòng 60 ngày -> Kiểm tra xem có trùng số thuê bao/mã tài khoản hay không
     var rowPhoneRaw = String(data[i][4] || '').trim();
     if (!rowPhoneRaw) continue;
 
@@ -300,18 +303,15 @@ function processForm(formObject) {
     }
 
     if (isDuplicate) {
-      var dupTime = (typeof Utilities !== 'undefined' && Utilities.formatDate) 
-        ? Utilities.formatDate(rowDate, scriptTz, "HH:mm:ss") 
-        : "trước đó";
-      var dupDateStr = (typeof Utilities !== 'undefined' && Utilities.formatDate)
-        ? Utilities.formatDate(rowDate, scriptTz, "dd/MM/yyyy")
-        : "";
+      var dupFormatted = (typeof Utilities !== 'undefined' && Utilities.formatDate) 
+        ? Utilities.formatDate(rowDate, scriptTz, "HH:mm dd/MM/yyyy") 
+        : (rowDate.toLocaleDateString ? rowDate.toLocaleDateString() : "trước đó");
       var dupEmail = data[i][1] || "người dùng khác";
       var dupEmp = data[i][3] || "";
 
       return {
         success: false,
-        message: (isMobile ? "Số thuê bao " : "Mã/Số thuê bao ") + rawPhone + " đã được nhập trong ngày hôm nay" + (dupDateStr ? (" (" + dupDateStr + ")") : "") + " lúc " + dupTime + " bởi " + dupEmail + (dupEmp ? (" cho nhân viên " + dupEmp) : "")
+        message: (isMobile ? "Số thuê bao " : "Mã/Số thuê bao ") + rawPhone + " đã được nhập vào lúc " + dupFormatted + " bởi " + dupEmail + (dupEmp ? (" cho nhân viên " + dupEmp) : "") + ". Theo quy định, không được nhập lại trong vòng 60 ngày!"
       };
     }
   }

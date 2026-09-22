@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html>
 
+<!-- [CHANGE_LOG] 2026-09-22 14:10:00 | Editor: AI - Antigravity (Gemini 3.8 Flash) | Mục đích: Cập nhật giá cước bắt buộc từ 30.000 đến dưới 2.500.000 VNĐ; validate client trước khi submit -->
 <!-- [CHANGE_LOG] 2026-09-22 10:25:00 | Editor: AI - Antigravity (Gemini 3.8 Flash) | Mục đích: Cập nhật trường Giá cước cho phép không bắt buộc nhập hoặc nhập số >= 0 -->
 <head>
     <base target="_top">
@@ -307,8 +308,8 @@
                 <div class="form-group"><label for="phoneNumber">Số thuê bao</label><input type="text" id="phoneNumber"
                         name="phoneNumber" placeholder="Nhập số thuê bao..." required></div>
                 <!-- Giá cước -->
-                <div class="form-group"><label for="price">Giá cước (Không bắt buộc)</label><input type="number" id="price" name="price"
-                        placeholder="Nhập giá cước (>= 0, không bắt buộc)..." min="0" step="any"></div>
+                <div class="form-group"><label for="price">Giá cước</label><input type="number" id="price" name="price"
+                        placeholder="Nhập giá cước (từ 30,000 đến dưới 2,500,000)..." required min="30000" max="2499999"></div>
                 <!-- Ghi chú -->
                 <div class="form-group"><label for="note">Ghi chú (Không bắt
                         buộc)</label><textarea id="note" name="note" placeholder="Nhập ghi chú..." rows="3"></textarea>
@@ -663,6 +664,13 @@
 
         function submitForm(e) {
             e.preventDefault();
+
+            var priceInput = document.getElementById('price');
+            var priceVal = Number(priceInput ? priceInput.value : 0);
+            if (!priceInput || !priceInput.value || isNaN(priceVal) || priceVal < 30000 || priceVal >= 2500000) {
+                handleError(new Error("Giá cước là bắt buộc và phải từ 30.000 đến dưới 2.500.000 VNĐ."));
+                return;
+            }
 
             var submitBtn = document.getElementById('submitBtn');
             var loadingOverlay = document.getElementById('loadingOverlay');
